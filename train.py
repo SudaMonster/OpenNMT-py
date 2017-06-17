@@ -184,7 +184,6 @@ def eval(model, criterion, data):
 def trainModel(model, trainData, validData, dataset, optim):
     print(model)
     model.train()
-
     # Define criterion of each GPU.
     criterion = NMTCriterion(dataset['dicts']['tgt'].size())
 
@@ -374,13 +373,16 @@ def main():
         optim = checkpoint['optim']
         print(optim)
 
-    optim.set_parameters(model.parameters())
+
+    train_params = filter(lambda p: p.requires_grad, model.parameters())
+
+    optim.set_parameters(train_params)
 
     if opt.train_from or opt.train_from_state_dict:
         optim.optimizer.load_state_dict(
             checkpoint['optim'].optimizer.state_dict())
 
-    nParams = sum([p.nelement() for p in model.parameters()])
+    nParams = sum([p.nelement() for p in train_params])
     print('* number of parameters: %d' % nParams)
 
     trainModel(model, trainData, validData, dataset, optim)

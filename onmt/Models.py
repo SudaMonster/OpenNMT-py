@@ -20,7 +20,7 @@ class Encoder(nn.Module):
                                      opt.word_vec_size,
                                      padding_idx=onmt.Constants.PAD)
         # Edit by Xutai Ma
-        self.word_lut.requires_grad = False
+        self.word_lut.weight.requires_grad = False
 
         self.rnn = nn.LSTM(input_size, self.hidden_size,
                            num_layers=opt.layers,
@@ -87,7 +87,7 @@ class Decoder(nn.Module):
                                      opt.word_vec_size,
                                      padding_idx=onmt.Constants.PAD)
         #Edit by Xutai Ma
-        self.word_lut.requires_grad = False
+        self.word_lut.weight.requires_grad = False
 
         self.rnn = StackedLSTM(opt.layers, input_size,
                                opt.rnn_size, opt.dropout)
