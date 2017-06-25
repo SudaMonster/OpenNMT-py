@@ -381,7 +381,7 @@ def main():
     if opt.train_from or opt.train_from_state_dict:
         optim.optimizer.load_state_dict(
             checkpoint['optim'].optimizer.state_dict())
-
+    print('Embedding layer is fixed!')
     nParams = sum([p.nelement() for p in train_params])
     print('* number of parameters: %d' % nParams)
 
