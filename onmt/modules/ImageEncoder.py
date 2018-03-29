@@ -1,16 +1,25 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-import torch.cuda
 from torch.autograd import Variable
 
 
 class ImageEncoder(nn.Module):
-    def __init__(self, opt):
+    """
+    A simple encoder convolutional -> recurrent neural network for
+    image input.
+
+    Args:
+        num_layers (int): number of encoder layers.
+        bidirectional (bool): bidirectional encoder.
+        rnn_size (int): size of hidden states of the rnn.
+        dropout (float): dropout probablity.
+    """
+    def __init__(self, num_layers, bidirectional, rnn_size, dropout):
         super(ImageEncoder, self).__init__()
-        self.layers = opt.layers
-        self.num_directions = 2 if opt.brnn else 1
-        self.hidden_size = opt.rnn_size
+        self.num_layers = num_layers
+        self.num_directions = 2 if bidirectional else 1
+        self.hidden_size = rnn_size
 
         self.layer1 = nn.Conv2d(3,   64, kernel_size=(3, 3),
                                 padding=(1, 1), stride=(1, 1))
@@ -30,17 +39,20 @@ class ImageEncoder(nn.Module):
         self.batch_norm3 = nn.BatchNorm2d(512)
 
         input_size = 512
-        self.rnn = nn.LSTM(input_size, opt.rnn_size,
-                           num_layers=opt.layers,
-                           dropout=opt.dropout,
-                           bidirectional=opt.brnn)
+        self.rnn = nn.LSTM(input_size, rnn_size,
+                           num_layers=num_layers,
+                           dropout=dropout,
+                           bidirectional=bidirectional)
         self.pos_lut = nn.Embedding(1000, input_size)
 
     def load_pretrained_vectors(self, opt):
+        # Pass in needed options only when modify function definition.
         pass
 
     def forward(self, input, lengths=None):
-        batchSize = input.size(0)
+        "See :obj:`onmt.modules.EncoderBase.forward()`"
+
+        batch_size = input.size(0)
         # (batch_size, 64, imgH, imgW)
         # layer 1
         input = F.relu(self.layer1(input[:, :, :, :]-0.5), True)
@@ -79,13 +91,13 @@ class ImageEncoder(nn.Module):
         input = F.relu(self.batch_norm3(self.layer6(input)), True)
 
         # # (batch_size, 512, H, W)
-        # # (batch_size, H, W, 512)
         all_outputs = []
         for row in range(input.size(2)):
             inp = input[:, :, row, :].transpose(0, 2)\
                                      .transpose(1, 2)
-            pos_emb = self.pos_lut(
-                Variable(torch.cuda.LongTensor(batchSize).fill_(row)))
+            row_vec = torch.Tensor(batch_size).type_as(inp.data)\
+                                              .long().fill_(row)
+            pos_emb = self.pos_lut(Variable(row_vec))
             with_pos = torch.cat(
                 (pos_emb.view(1, pos_emb.size(0), pos_emb.size(1)), inp), 0)
             outputs, hidden_t = self.rnn(with_pos)
