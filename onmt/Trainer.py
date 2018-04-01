@@ -205,11 +205,14 @@ class Trainer(object):
             :obj:`onmt.Statistics`: validation loss statistics
         """
         # Set model in validating mode.
+        hidden_states = []
+        indices = []
         self.model.eval()
 
         stats = Statistics()
 
         for batch in valid_iter:
+            hidden_batch = []
             cur_dataset = valid_iter.get_cur_dataset()
             self.valid_loss.cur_dataset = cur_dataset
 
@@ -219,6 +222,8 @@ class Trainer(object):
             else:
                 src_lengths = None
 
+            #print(batch.tgt.view(1,-1))
+            #input()
             tgt = onmt.io.make_features(batch, 'tgt')
 
             # F-prop through the model.
@@ -231,10 +236,24 @@ class Trainer(object):
             # Update statistics.
             stats.update(batch_stats)
 
+            for i in range(tgt.size(1)):
+                _len = len([ None for ii in tgt[:, i].data if ii[0] != 1]) - 1
+                assert _len > 0, "_len : {}".format(_len)
+                hidden_batch.append(outputs[:_len, i, :])
+            #import pdb; pdb.set_trace()
+            hidden_states += hidden_batch
+            indices += [index.data[0] for index in batch.indices]
+
+
         # Set model back to training mode.
         self.model.train()
 
-        return stats
+        sort_hidden_states = [None for _ in range(max(indices) + 1)]
+        #import pdb; pdb.set_trace()
+        for i, index in enumerate(indices):
+            sort_hidden_states[index] = hidden_states[indices.index(index)]
+
+        return stats, sort_hidden_states
 
     def epoch_step(self, ppl, epoch):
         return self.optim.update_learning_rate(ppl, epoch)

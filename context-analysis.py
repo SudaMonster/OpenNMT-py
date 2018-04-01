@@ -266,6 +266,7 @@ def context(model, fields, optim, data_type, model_opt):
         is_train=False
     )
     print('Auxiliary decoder')
+    #import pdb; pdb.set_trace()
     valid_stats_aux, hidden_states_aux = trainer_aux.validate(valid_iter)
     torch.save(
         hidden_states_aux,
